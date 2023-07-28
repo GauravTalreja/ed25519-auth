@@ -7,6 +7,7 @@ use std::{
     sync::{Arc, RwLock},
 };
 
+const LOGIN_DELAY: u64 = 2;
 const NAMESPACE: &str = "s3";
 
 #[tokio::main]
@@ -62,14 +63,21 @@ async fn login(
     body: String,
 ) -> StatusCode {
     let timestamp = Utc::now().timestamp();
+    tokio::time::sleep(tokio::time::Duration::from_secs(LOGIN_DELAY)).await;
     match SshSig::from_pem(body) {
         Ok(sig) => match sig.algorithm() {
             ssh_key::Algorithm::Ed25519 => match users.read().unwrap().get(&uid) {
                 Some(saved_key) => match saved_key {
                     Some(saved_key) => {
-                        match saved_key.verify(NAMESPACE, timestamp.to_string().as_bytes(), &sig) {
-                            Ok(_) => StatusCode::OK,
-                            Err(_) => StatusCode::IM_A_TEAPOT,
+                        match (timestamp - (LOGIN_DELAY as i64 - 1)..=timestamp).find_map(
+                            |timestamp: i64| {
+                                saved_key
+                                    .verify(NAMESPACE, timestamp.to_string().as_bytes(), &sig)
+                                    .ok()
+                            },
+                        ) {
+                            Some(_) => StatusCode::OK,
+                            None => StatusCode::IM_A_TEAPOT,
                         }
                     }
                     None => StatusCode::IM_A_TEAPOT,
