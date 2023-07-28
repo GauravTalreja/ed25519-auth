@@ -57,6 +57,7 @@ async fn register(
     }
 }
 
+#[axum::debug_handler]
 async fn login(
     users: Extension<Arc<RwLock<HashMap<String, Option<PublicKey>>>>>,
     Path(uid): Path<String>,
