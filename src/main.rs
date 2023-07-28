@@ -42,17 +42,17 @@ async fn register(
         Ok(public_key) => match public_key.algorithm() {
             ssh_key::Algorithm::Ed25519 => match users.write().unwrap().get_mut(&uid) {
                 Some(saved_key) => match saved_key {
-                    Some(_) => StatusCode::FORBIDDEN,
+                    Some(_) => StatusCode::IM_A_TEAPOT,
                     None => {
                         *saved_key = Some(public_key);
                         StatusCode::OK
                     }
                 },
-                None => StatusCode::EXPECTATION_FAILED,
+                None => StatusCode::IM_A_TEAPOT,
             },
             _ => StatusCode::IM_A_TEAPOT,
         },
-        Err(_) => StatusCode::PRECONDITION_FAILED,
+        Err(_) => StatusCode::IM_A_TEAPOT,
     }
 }
 
