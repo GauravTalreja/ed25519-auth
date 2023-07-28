@@ -28,7 +28,7 @@ async fn main() {
     let app = Router::new()
         .route("/register/:uid", post(register))
         .route("/login/:uid", post(login))
-        .route("attack", post(login))
+        .route("/attack", post(login))
         .layer(Extension(Arc::new(RwLock::new(users))))
         .layer(Extension(Arc::new(RwLock::new(signatures))));
 
