@@ -1,4 +1,4 @@
-use axum::{body::Bytes, extract::Path, http::StatusCode, routing::post, Extension, Router};
+use axum::{extract::Path, http::StatusCode, routing::post, Extension, Router};
 use ssh_key::{PublicKey, SshSig};
 use std::{
     collections::HashMap,
@@ -36,9 +36,9 @@ async fn main() {
 async fn register(
     users: Extension<Arc<RwLock<HashMap<String, Option<PublicKey>>>>>,
     Path(uid): Path<String>,
-    body: Bytes,
+    body: String,
 ) -> StatusCode {
-    match PublicKey::from_bytes(&body) {
+    match PublicKey::from_openssh(&body) {
         Ok(public_key) => match public_key.algorithm() {
             ssh_key::Algorithm::Ed25519 => match users.write().unwrap().get_mut(&uid) {
                 Some(saved_key) => match saved_key {
@@ -60,9 +60,9 @@ async fn register(
 async fn login(
     users: Extension<Arc<RwLock<HashMap<String, Option<PublicKey>>>>>,
     Path(uid): Path<String>,
-    sig: Bytes,
+    body: String,
 ) -> StatusCode {
-    match SshSig::from_pem(&sig) {
+    match SshSig::from_pem(body) {
         Ok(sig) => match sig.algorithm() {
             ssh_key::Algorithm::Ed25519 => match users.read().unwrap().get(&uid) {
                 Some(saved_key) => match saved_key {
