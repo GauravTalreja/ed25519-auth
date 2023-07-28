@@ -1,4 +1,4 @@
-use axum::{extract::Path, http::StatusCode, routing::post, Extension, Json, Router};
+use axum::{body::Bytes, extract::Path, http::StatusCode, routing::post, Extension, Router};
 use ssh_key::{PublicKey, SshSig};
 use std::{
     collections::HashMap,
@@ -36,20 +36,23 @@ async fn main() {
 async fn register(
     users: Extension<Arc<RwLock<HashMap<String, Option<PublicKey>>>>>,
     Path(uid): Path<String>,
-    Json(public_key): Json<PublicKey>,
+    body: Bytes,
 ) -> StatusCode {
-    match public_key.algorithm() {
-        ssh_key::Algorithm::Ed25519 => match users.write().unwrap().get_mut(&uid) {
-            Some(saved_key) => match saved_key {
-                Some(_) => StatusCode::IM_A_TEAPOT,
-                None => {
-                    *saved_key = Some(public_key);
-                    StatusCode::OK
-                }
+    match PublicKey::from_bytes(&body) {
+        Ok(public_key) => match public_key.algorithm() {
+            ssh_key::Algorithm::Ed25519 => match users.write().unwrap().get_mut(&uid) {
+                Some(saved_key) => match saved_key {
+                    Some(_) => StatusCode::IM_A_TEAPOT,
+                    None => {
+                        *saved_key = Some(public_key);
+                        StatusCode::OK
+                    }
+                },
+                None => StatusCode::IM_A_TEAPOT,
             },
-            None => StatusCode::IM_A_TEAPOT,
+            _ => StatusCode::IM_A_TEAPOT,
         },
-        _ => StatusCode::IM_A_TEAPOT,
+        Err(_) => StatusCode::IM_A_TEAPOT,
     }
 }
 
@@ -57,9 +60,9 @@ async fn register(
 async fn login(
     users: Extension<Arc<RwLock<HashMap<String, Option<PublicKey>>>>>,
     Path(uid): Path<String>,
-    Json(sig): Json<String>,
+    sig: Bytes,
 ) -> StatusCode {
-    match SshSig::from_pem(sig.as_bytes()) {
+    match SshSig::from_pem(&sig) {
         Ok(sig) => match sig.algorithm() {
             ssh_key::Algorithm::Ed25519 => match users.read().unwrap().get(&uid) {
                 Some(saved_key) => match saved_key {
